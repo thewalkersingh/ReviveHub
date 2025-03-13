@@ -1,0 +1,451 @@
+package com.revivehub.config;
+import com.revivehub.security.JwtAuthFilter;
+import com.revivehub.security.JwtUtils;
+import com.revivehub.security.UserDetailsServiceImpl;
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Configuration;
+import org.springframework.security.authentication.AuthenticationManager;
+import org.springframework.security.config.annotation.authentication.configuration.AuthenticationConfiguration;
+import org.springframework.security.config.annotation.web.builders.HttpSecurity;
+import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
+import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
+import org.springframework.security.config.http.SessionCreationPolicy;
+import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
+import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.security.web.SecurityFilterChain;
+import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
+
+@Configuration
+@EnableWebSecurity
+public class SecurityConfig {
+  private final JwtUtils jwtUtils;
+  private final UserDetailsServiceImpl userDetailsService;
+  
+  public SecurityConfig(
+		  JwtUtils jwtUtils,
+		  UserDetailsServiceImpl userDetailsService) {
+	this.jwtUtils = jwtUtils;
+	this.userDetailsService = userDetailsService;
+  }
+  
+  @Bean
+  public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
+	http
+			.csrf(AbstractHttpConfigurer::disable)
+			.authorizeHttpRequests(auth -> auth
+					.requestMatchers("/api/auth/**").permitAll()
+					.anyRequest().authenticated())
+			.sessionManagement(session -> session
+					.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
+			.addFilterBefore(
+					new JwtAuthFilter(jwtUtils, userDetailsService),
+					UsernamePasswordAuthenticationFilter.class);
+	
+	return http.build();
+  }
+  
+  @Bean
+  public PasswordEncoder passwordEncoder() {
+	return new BCryptPasswordEncoder();
+  }
+  
+  @Bean
+  public AuthenticationManager authenticationManager(AuthenticationConfiguration authConfig) throws Exception {
+	return authConfig.getAuthenticationManager();
+  }
+}
+
+
+package com.revivehub.controller;
+
+import com.revivehub.service.UserService;
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.*;
+
+import java.util.Map;
+
+@RestController
+@RequestMapping("/api/auth")
+public class UserController {
+  
+  private final UserService userService;
+  
+  public UserController(UserService userService) {
+	this.userService = userService;
+  }
+  
+  @PostMapping("/signup")
+  public ResponseEntity<?> registerUser(@RequestBody Map<String, String> userRequest) {
+	String response = userService.registerUser(userRequest.get("username"), userRequest.get("password"));
+	return ResponseEntity.ok(Map.of("message", response));
+  }
+  
+  @PostMapping("/login")
+  public ResponseEntity<?> authenticateUser(@RequestBody Map<String, String> loginRequest) {
+	String token = userService.authenticateUser(loginRequest.get("username"), loginRequest.get("password"));
+	return ResponseEntity.ok(Map.of("token", token));
+  }
+}
+
+
+package com.revivehub.model;
+import jakarta.persistence.*;
+import lombok.*;
+
+
+@Entity
+@Data
+@Table(name = "roles")
+public class Role {
+  @Id
+  @GeneratedValue(strategy = GenerationType.IDENTITY)
+  private Long id;
+  @Enumerated(EnumType.STRING)
+  @Column(unique = true)
+  private RoleType name;
+}
+
+
+package com.revivehub.model;
+public enum RoleType {
+  ROLE_USER,
+  ROLE_ADMIN
+}
+
+
+package com.revivehub.model;
+import jakarta.persistence.*;
+import lombok.Data;
+
+import java.util.HashSet;
+import java.util.Set;
+
+@Entity
+@Data
+@Table(name = "users")
+public class User {
+  @Id
+  @GeneratedValue(strategy = GenerationType.IDENTITY)
+  private Long id;
+  
+  @Column(unique = true, nullable = false)
+  private String username;
+  
+  @Column(nullable = false)
+  private String password;
+  
+  @ManyToMany(fetch = FetchType.EAGER)
+  @JoinTable(
+		  name = "user_roles",
+		  joinColumns = @JoinColumn(name = "user_id"),
+		  inverseJoinColumns = @JoinColumn(name = "role_id")
+  )
+  private Set<Role> roles = new HashSet<>();
+}
+
+
+package com.revivehub.repository;
+import com.revivehub.model.Role;
+import com.revivehub.model.RoleType;
+import org.springframework.data.jpa.repository.JpaRepository;
+
+import java.util.Optional;
+
+public interface RoleRepository extends JpaRepository<Role, Long> {
+  Optional<Role> findByName(RoleType role);
+}
+
+
+package com.revivehub.repository;
+import com.revivehub.model.User;
+import org.springframework.data.jpa.repository.JpaRepository;
+
+import java.util.Optional;
+
+public interface UserRepository extends JpaRepository<User, Long> {
+  Optional<User> findByUsername(String username);
+  
+  boolean existsByUsername(String username);
+}
+
+
+
+package com.revivehub.security;
+import jakarta.servlet.FilterChain;
+import jakarta.servlet.ServletException;
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
+import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.security.core.userdetails.UserDetails;
+import org.springframework.security.core.userdetails.UserDetailsService;
+import org.springframework.security.web.authentication.WebAuthenticationDetailsSource;
+import org.springframework.stereotype.Component;
+import org.springframework.web.filter.OncePerRequestFilter;
+
+import java.io.IOException;
+
+@Component
+public class JwtAuthFilter extends OncePerRequestFilter {
+  private final JwtUtils jwtUtils;
+  private final UserDetailsService userDetailsService;
+  
+  public JwtAuthFilter(JwtUtils jwtUtils, UserDetailsService userDetailsService) {
+	this.jwtUtils = jwtUtils;
+	this.userDetailsService = userDetailsService;
+  }
+  
+  @Override
+  protected void doFilterInternal(
+		  HttpServletRequest request,
+		  HttpServletResponse response,
+		  FilterChain filterChain
+								 ) throws ServletException, IOException {
+	String token = extractToken(request);
+	if (token != null && jwtUtils.validateJwtToken(token)) {
+	  String username = jwtUtils.getUsernameFromToken(token);
+	  UserDetails userDetails = userDetailsService.loadUserByUsername(username);
+	  
+	  UsernamePasswordAuthenticationToken authToken =
+			  new UsernamePasswordAuthenticationToken(
+					  userDetails,
+					  null,
+					  userDetails.getAuthorities()
+			  );
+	  authToken.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
+	  SecurityContextHolder.getContext().setAuthentication(authToken);
+	}
+	filterChain.doFilter(request, response);
+  }
+  
+  private String extractToken(HttpServletRequest request) {
+	String header = request.getHeader("Authorization");
+	if (header != null && header.startsWith("Bearer ")) {
+	  return header.substring(7);
+	}
+	return null;
+  }
+}
+
+
+
+package com.revivehub.security;
+import io.jsonwebtoken.*;
+import io.jsonwebtoken.security.Keys;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.stereotype.Component;
+
+import javax.crypto.SecretKey;
+import java.security.Key;
+import java.util.Date;
+
+@Component
+public class JwtUtils {
+  private final Key key;
+  private final int jwtExpirationMs;
+  
+  public JwtUtils(
+		  @Value("${jwt.secret}") String jwtSecret,
+		  @Value("${jwt.expiration-ms}") int jwtExpirationMs
+				 ) {
+	// Generate a secure key from the secret string
+	this.key = Keys.hmacShaKeyFor(jwtSecret.getBytes());
+	this.jwtExpirationMs = jwtExpirationMs;
+  }
+  
+  public String generateJwtToken(String username) {
+	return Jwts.builder()
+			   .subject(username)
+			   .issuedAt(new Date())
+			   .expiration(new Date(System.currentTimeMillis() + jwtExpirationMs))
+			   .signWith(key)
+			   .compact();
+  }
+  
+  public boolean validateJwtToken(String token) {
+	try {
+	  Jwts.parser()
+		  .verifyWith((SecretKey) key)
+		  .build()
+		  .parseSignedClaims(token);
+	  return true;
+	} catch (JwtException | IllegalArgumentException e) {
+	  // Log error
+	  System.err.println("JWT validation error: " + e.getMessage());
+	  return false;
+	}
+  }
+  
+  public String getUsernameFromToken(String token) {
+	return Jwts.parser()
+			   .verifyWith((SecretKey) key)
+			   .build()
+			   .parseSignedClaims(token)
+			   .getPayload()
+			   .getSubject();
+  }
+}
+
+
+package com.revivehub.security;
+import com.revivehub.model.User;
+import org.springframework.security.core.GrantedAuthority;
+import org.springframework.security.core.userdetails.UserDetails;
+
+import java.util.Collection;
+import java.util.List;
+
+public class UserDetailsImpl implements UserDetails {
+  private final String username;
+  private final String password;
+  
+  public UserDetailsImpl(User user) {
+	this.username = user.getUsername();
+	this.password = user.getPassword();
+  }
+  
+  @Override
+  public Collection<? extends GrantedAuthority> getAuthorities() {
+	return List.of(); // No roles for now, add later if needed
+  }
+  
+  @Override
+  public String getPassword() {
+	return password;
+  }
+  
+  @Override
+  public String getUsername() {
+	return username;
+  }
+  
+  @Override
+  public boolean isAccountNonExpired() {
+	return true;
+  }
+  
+  @Override
+  public boolean isAccountNonLocked() {
+	return true;
+  }
+  
+  @Override
+  public boolean isCredentialsNonExpired() {
+	return true;
+  }
+  
+  @Override
+  public boolean isEnabled() {
+	return true;
+  }
+}
+
+
+package com.revivehub.security;
+import com.revivehub.model.User;
+import com.revivehub.repository.UserRepository;
+import org.springframework.security.core.userdetails.UserDetails;
+import org.springframework.security.core.userdetails.UserDetailsService;
+import org.springframework.security.core.userdetails.UsernameNotFoundException;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+@Service
+public class UserDetailsServiceImpl implements UserDetailsService {
+  private final UserRepository userRepository;
+  
+  public UserDetailsServiceImpl(UserRepository userRepository) {
+	this.userRepository = userRepository;
+  }
+  
+  @Override
+  @Transactional
+  public UserDetails loadUserByUsername(String username) throws UsernameNotFoundException {
+	User user = userRepository.findByUsername(username)
+							  .orElseThrow(() -> new UsernameNotFoundException(
+									  "User not found with username: " + username));
+	
+	return new UserDetailsImpl(user);
+  }
+}
+
+
+package com.revivehub.service;
+import com.revivehub.model.Role;
+import com.revivehub.model.RoleType;
+import com.revivehub.model.User;
+import com.revivehub.repository.RoleRepository;
+import com.revivehub.repository.UserRepository;
+import com.revivehub.security.JwtUtils;
+import com.revivehub.security.UserDetailsImpl;
+import org.springframework.security.authentication.AuthenticationManager;
+import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.stereotype.Service;
+
+import java.util.HashSet;
+import java.util.Set;
+
+@Service
+public class UserService {
+  private final UserRepository userRepository;
+  private final RoleRepository roleRepository;
+  private final PasswordEncoder passwordEncoder;
+  private final AuthenticationManager authenticationManager;
+  private final JwtUtils jwtUtils;
+  
+  public UserService(
+		  UserRepository userRepository, RoleRepository roleRepository,
+		  PasswordEncoder passwordEncoder, AuthenticationManager authenticationManager,
+		  JwtUtils jwtUtils) {
+	this.userRepository = userRepository;
+	this.roleRepository = roleRepository;
+	this.passwordEncoder = passwordEncoder;
+	this.authenticationManager = authenticationManager;
+	this.jwtUtils = jwtUtils;
+  }
+  
+  public String registerUser(String username, String password) {
+	if (userRepository.existsByUsername(username)) {
+	  return "Error: Username is already taken!";
+	}
+	
+	User user = new User();
+	user.setUsername(username);
+	user.setPassword(passwordEncoder.encode(password));
+	
+	// Assign ROLE_USER by default
+	Set<Role> roles = new HashSet<>();
+	Role userRole = roleRepository.findByName(RoleType.ROLE_USER)
+								  .orElseThrow(() -> new RuntimeException("Role not found"));
+	roles.add(userRole);
+	
+	user.setRoles(roles);
+	userRepository.save(user);
+	return "User registered successfully!";
+  }
+  
+  public String authenticateUser(String username, String password) {
+	Authentication authentication = authenticationManager.authenticate(
+			new UsernamePasswordAuthenticationToken(username, password));
+	
+	UserDetailsImpl userDetails = (UserDetailsImpl) authentication.getPrincipal();
+	return jwtUtils.generateJwtToken(userDetails.getUsername());
+  }
+}
+
+
+package com.revivehub;
+
+import org.springframework.boot.SpringApplication;
+import org.springframework.boot.autoconfigure.SpringBootApplication;
+
+@SpringBootApplication
+public class RevivehubBackendApplication {
+
+	public static void main(String[] args) {
+		SpringApplication.run(RevivehubBackendApplication.class, args);
+	}
+
+}

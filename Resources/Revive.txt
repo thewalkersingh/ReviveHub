@@ -1,0 +1,52 @@
+################
+I am developing an app in which I will be listing owned bikes, scooters, mopeds and cars. This business is owned by 3–4 people, and only they can add, delete and update any kind of vehicle. User can see, book test ride, buy etc. User can also get different vehicle facilities like finance, insurance, documentations and service of vehicle. I want to use Java, Spring Boot and react js. I am not sure what kind of Architecture should I pick, like monolithic or microservice. Also, I want to create an android app if possible for this, Can you help me in this project from scratch?
+Tagline: "Revive your ride, redefine your journey."
+
+###############################
+I have 10 day to build the basic functionality and host it. As this is a startup, there will be less traffic, so the site will be up in daytime and at night I will keep updating it. After completing basic features and hosting it. I want to configure the whole project in detail as it should be a production grade project. I myself am a software developer, so I know spring boot, react js, JavaScript. Prepare all the details in a text file with all the details as per each day task we have to complete. I want to use latest technologies so that it will be smooth to maintain them. Let me know if you need any details.
+
+
+####################
+Currently, I have not bought the domain name but checked on namechk, and it's available. I don't have the budget now so we will be using all the free services and at last day i.e. 10th I will host it for free and observe for at least 15 day if our site is getting any response or traffic. If every thing goes well, then we all will put money and build the production model. Hope you got my intention, if not please ask me all the question you have.
+
+###############
+Yes, I need all these in later session as we will progress in the project.
+Do you need help setting up Stripe test mode keys in the backend/frontend?
+Should I provide code snippets for JWT authentication flow in React?
+Do you want a step-by-step guide for deploying to Heroku/Netlify?
+Now let's start working day wise. I want to set up and write the complete code in detailed way day by day. Also, I will share my progress or changes so we will be in sync. Now let's start with day 1 and do all the things in details because I don't want any error or skip anything as that will take time later. Hope you got my point.
+
+******************
+Free Tools Checklist
+Category			Tool						Use Case
+Backend Hosting		Heroku						Spring Boot API + PostgreSQL
+Frontend Hosting	Netlify/Vercel				React App 
+Payments			Stripe Test Mode			Mock transactions
+Logging				Heroku Logs					Debugging
+Analytics			Google Analytics			Track user traffic
+Logo Design			Canva/LogoMakr				Create placeholder logo
+Domain				Netlify/Heroku subdomains	Temporary URLs
+
+#####################
+Below is my progress
+backend/  
+├── src/main/java/com/revivehub/  
+│   ├── config/  
+│   ├── controller/  
+│   ├── model/  
+│   ├── repository/  
+│   ├── service/  
+│   └── security/  
+├── src/main/resources/  
+│   ├── application.yml  
+│   └── static/  
+
+frontend/
+├── src/
+│   ├── styles/
+│   │   ├── App.css       // Global styles
+│   │   ├── Header.css    // Component-specific CSS
+│   │   └── Home.css
+│   ├── components/
+│   ├── pages/
+│   └── ...
