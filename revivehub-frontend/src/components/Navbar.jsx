@@ -48,7 +48,7 @@ const Navbar = () => {
   };
   
   return (
-    <AppBar position="static">
+    <AppBar position="static" sx={{width: '100%'}}>
       <Toolbar>
         {/* Logo on the Left */}
         <Typography variant="h6" component="div" sx={{flexGrow: 1}}>

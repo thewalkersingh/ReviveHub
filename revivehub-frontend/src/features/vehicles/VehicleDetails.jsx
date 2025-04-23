@@ -7,13 +7,13 @@ import VehicleImageGallery from "./VehicleImageGallery.jsx";
 
 
 const VehicleDetails = () => {
-  const {id} = useParams();
+  const {type} = useParams();
   const [vehicle, setVehicle] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   
   useEffect(() => {
-    api.get(`/vehicles/${id}`)
+    api.get(`/vehicles/type/${type}`)
       .then((response) => {
         setVehicle(response.data);
         setLoading(false);
@@ -23,7 +23,7 @@ const VehicleDetails = () => {
         setError("Failed to fetch vehicle details");
         setLoading(false);
       });
-  }, [id]);
+  }, [type]);
   
   if (loading) {
     return (

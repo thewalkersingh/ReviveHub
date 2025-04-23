@@ -22,7 +22,7 @@ const Login = () => {
       
       // Decode the token to check the user role (using the subject field)
       const decoded = jwtDecode(token);
-      if (decoded.sub === 'admin') {
+      if (decoded.sub === 'ROLE_ADMIN') {
         navigate('/dashboard');
       } else {
         navigate('/');

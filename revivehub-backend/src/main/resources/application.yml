@@ -25,6 +25,11 @@ spring:
       ddl-auto: update
     show-sql: true
 
+#spring:
+#  data:
+#    mongodb:
+#      uri: mongodb+srv://devwalkersingh:<5cg3396bgr@DNS>@school.w7co5.mongodb.net/?retryWrites=true&w=majority&appName=School
+
 
 logging:
   level:
