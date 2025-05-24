@@ -39,3 +39,18 @@ logging:
 jwt:
   secret: "tEfq/pMf/cwzSCYAm8K0PHEvK0e+gjLodyW0brUE8l0="  # Generate via: openssl rand -base64 32
   expiration-ms: 86400000  # 24 hours (in milliseconds)
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: "*"  # expose all endpoints (for dev only!)
+
+  endpoint:
+    health:
+      show-details: always
+
+  prometheus:
+    metrics:
+      export:
+        enabled: true
