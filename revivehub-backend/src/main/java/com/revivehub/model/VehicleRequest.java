@@ -1,11 +1,14 @@
 package com.revivehub.model;
 import jakarta.persistence.*;
-import lombok.Data;
+import lombok.*;
 
 import java.time.LocalDateTime;
 
-@Data
 @Entity
+@Getter
+@Setter
+@NoArgsConstructor
+@AllArgsConstructor
 @Table(name = "vehicle_requests")
 public class VehicleRequest {
   @Id

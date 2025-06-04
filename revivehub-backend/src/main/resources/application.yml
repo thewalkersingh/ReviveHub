@@ -16,7 +16,7 @@ server:
 
 spring:
   datasource:
-    url: jdbc:mysql://localhost:3306/revivehub?createDatabaseIfNotExist=true
+    url: jdbc:mysql://localhost:3306/revivehub
     username: root
     password: admin
     driver-class-name: com.mysql.cj.jdbc.Driver

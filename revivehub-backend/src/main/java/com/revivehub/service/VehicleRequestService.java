@@ -5,13 +5,13 @@ import org.springframework.stereotype.Service;
 
 @Service
 public class VehicleRequestService {
-  private final VehicleRequestRepository vehicleRequestRepository;
-  
-  public VehicleRequestService(VehicleRequestRepository vehicleRequestRepository) {
-	this.vehicleRequestRepository = vehicleRequestRepository;
-  }
-  
-  public VehicleRequest saveRequest(VehicleRequest request) {
-	return vehicleRequestRepository.save(request);
-  }
+   private final VehicleRequestRepository vehicleRequestRepository;
+   
+   public VehicleRequestService(VehicleRequestRepository vehicleRequestRepository) {
+	  this.vehicleRequestRepository = vehicleRequestRepository;
+   }
+   
+   public void saveRequest(VehicleRequest request) {
+	  vehicleRequestRepository.save(request);
+   }
 }

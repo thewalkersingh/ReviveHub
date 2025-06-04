@@ -6,10 +6,7 @@ import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.nio.file.Paths;
-import java.nio.file.StandardCopyOption;
+import java.nio.file.*;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -90,18 +87,18 @@ public class VehicleController {
 									  .orElseThrow(() -> new RuntimeException("Vehicle not found"));
 	  List<String> imageUrls = new ArrayList<>();
 	  
-	  for (MultipartFile file : files) {
+	  for(MultipartFile file : files){
 		 String fileName = System.currentTimeMillis() + "_" + file.getOriginalFilename();
-		 try {
+		 try{
 			Path uploadPath = Paths.get("uploads");
-			if (!Files.exists(uploadPath)) {
+			if(!Files.exists(uploadPath)){
 			   Files.createDirectories(uploadPath);
 			}
 			Path filePath = uploadPath.resolve(fileName);
 			Files.copy(file.getInputStream(), filePath, StandardCopyOption.REPLACE_EXISTING);
 			// Construct URL (adjust if needed; this assumes the 'uploads' folder is served statically)
 			imageUrls.add("http://localhost:8080/uploads/" + fileName);
-		 } catch (IOException ex) {
+		 } catch(IOException ex){
 			return ResponseEntity.status(500).body("Failed to upload files");
 		 }
 	  }
